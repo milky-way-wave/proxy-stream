@@ -10,19 +10,19 @@ import (
 	"strings"
 )
 
-type Stream struct {
+type stream struct {
 	url      string
 	showMeta bool
 }
 
-func New(url string, showMeta bool) Stream {
-	return Stream{
+func New(url string, showMeta bool) stream {
+	return stream{
 		url:      url,
 		showMeta: showMeta,
 	}
 }
 
-func (s *Stream) isBrokenPipeErr(err error) bool {
+func (s *stream) isBrokenPipeErr(err error) bool {
 	if err == nil {
 		return false
 	}
@@ -37,7 +37,7 @@ func (s *Stream) isBrokenPipeErr(err error) bool {
 	return strings.Contains(err.Error(), "write: broken pipe")
 }
 
-func (s *Stream) extractStreamTitle(meta string) string {
+func (s *stream) extractStreamTitle(meta string) string {
 	prefix := "StreamTitle='"
 	start := strings.Index(meta, prefix)
 	if start == -1 {
@@ -51,7 +51,7 @@ func (s *Stream) extractStreamTitle(meta string) string {
 	return meta[start : start+end]
 }
 
-func (s *Stream) StreamHandler(w http.ResponseWriter, r *http.Request) {
+func (s *stream) StreamHandler(w http.ResponseWriter, r *http.Request) {
 	req, err := http.NewRequest("GET", s.url, nil)
 	if err != nil {
 		http.Error(w, "Server error", http.StatusInternalServerError)

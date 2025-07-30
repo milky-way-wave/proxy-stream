@@ -13,19 +13,19 @@ import (
 func main() {
 	cfg, err := config.New()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error config: %v", err)
 	}
 
-	client := client.New(cfg.COOKIE_SECURE)
-	stream := stream.New(cfg.STREAM_URL, false)
+	client := client.New(cfg.GetCookieSecure())
+	stream := stream.New(cfg.GetStreamUrl(), false)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		client.CreateCookieUniqueClient(w, r)
 		stream.StreamHandler(w, r)
 	})
 
-	address := fmt.Sprintf("0.0.0.0:%d", cfg.PORT)
-	log.Printf("Listening on http://localhost:%d", cfg.PORT)
+	address := fmt.Sprintf("0.0.0.0:%d", cfg.GetPort())
+	log.Printf("Listening on http://localhost:%d", cfg.GetPort())
 
 	err = http.ListenAndServe(address, nil)
 	if err != nil {

@@ -9,12 +9,12 @@ import (
 )
 
 type Config struct {
-	PORT          uint16
-	STREAM_URL    string
-	COOKIE_SECURE bool
+	port          uint16
+	stream_url    string
+	cookie_secure bool
 }
 
-func New() (*Config, error) {
+func New() (Config, error) {
 	_ = godotenv.Load()
 
 	portStr := os.Getenv("PORT")
@@ -24,12 +24,12 @@ func New() (*Config, error) {
 
 	portInt, err := strconv.Atoi(portStr)
 	if err != nil || portInt < 0 || portInt > 65535 {
-		return nil, fmt.Errorf("Invalid PORT value: %s", portStr)
+		return Config{}, fmt.Errorf("Invalid PORT value: %s", portStr)
 	}
 
 	streamUrl := os.Getenv("STREAM_URL")
 	if streamUrl == "" {
-		return nil, fmt.Errorf("Required environment variable STREAM_URL is not set")
+		return Config{}, fmt.Errorf("Required environment variable STREAM_URL is not set")
 	}
 
 	cookieSecure := false
@@ -37,13 +37,25 @@ func New() (*Config, error) {
 	if cookieSecureStr != "" {
 		cookieSecure, err = strconv.ParseBool(cookieSecureStr)
 		if err != nil {
-			return nil, fmt.Errorf("Invalid COOKIE_SECURE value: %s", cookieSecureStr)
+			return Config{}, fmt.Errorf("Invalid COOKIE_SECURE value: %s", cookieSecureStr)
 		}
 	}
 
-	return &Config{
-		STREAM_URL:    streamUrl,
-		PORT:          uint16(portInt),
-		COOKIE_SECURE: cookieSecure,
+	return Config{
+		port:          uint16(portInt),
+		stream_url:    streamUrl,
+		cookie_secure: cookieSecure,
 	}, nil
+}
+
+func (c Config) GetPort() uint16 {
+	return c.port
+}
+
+func (c Config) GetStreamUrl() string {
+	return c.stream_url
+}
+
+func (c Config) GetCookieSecure() bool {
+	return c.cookie_secure
 }

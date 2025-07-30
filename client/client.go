@@ -8,19 +8,19 @@ import (
 	"net/http"
 )
 
-type Client struct {
+type client struct {
 	cookies_keu_name string
 	secure           bool
 }
 
-func New(secure bool) Client {
-	return Client{
+func New(secure bool) client {
+	return client{
 		cookies_keu_name: "c_uid",
 		secure:           secure,
 	}
 }
 
-func (c *Client) genUid(r *http.Request) string {
+func (c *client) genUid(r *http.Request) string {
 	userAgent := r.Header.Get("User-Agent")
 	ip := r.Header.Get("X-Real-IP")
 
@@ -34,7 +34,7 @@ func (c *Client) genUid(r *http.Request) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func (c *Client) CreateCookieUniqueClient(w http.ResponseWriter, r *http.Request) {
+func (c *client) CreateCookieUniqueClient(w http.ResponseWriter, r *http.Request) {
 	clientID, err := r.Cookie(c.cookies_keu_name)
 	if err != nil {
 		clientID := c.genUid(r)
