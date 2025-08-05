@@ -9,13 +9,19 @@ import (
 )
 
 type Config struct {
-	port          uint16
+	app_secret    string
+	app_port      uint16
 	stream_url    string
 	cookie_secure bool
 }
 
 func New() (Config, error) {
 	_ = godotenv.Load()
+
+	app_secret := os.Getenv("APP_SECRET")
+	if app_secret == "" {
+		return Config{}, fmt.Errorf("Required environment variable APP_SECRET is not set")
+	}
 
 	portStr := os.Getenv("PORT")
 	if portStr == "" {
@@ -42,14 +48,15 @@ func New() (Config, error) {
 	}
 
 	return Config{
-		port:          uint16(portInt),
+		app_port:      uint16(portInt),
 		stream_url:    streamUrl,
 		cookie_secure: cookieSecure,
+		app_secret:    app_secret,
 	}, nil
 }
 
 func (c Config) GetPort() uint16 {
-	return c.port
+	return c.app_port
 }
 
 func (c Config) GetStreamUrl() string {
@@ -58,4 +65,8 @@ func (c Config) GetStreamUrl() string {
 
 func (c Config) GetCookieSecure() bool {
 	return c.cookie_secure
+}
+
+func (c Config) GetAppSecret() string {
+	return c.app_secret
 }
