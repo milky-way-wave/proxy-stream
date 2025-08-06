@@ -2,6 +2,7 @@ package stream
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -10,6 +11,11 @@ import (
 	"strconv"
 	"strings"
 )
+
+type UserCounter interface {
+	AddUser(id string)
+	RemoveUser(id string)
+}
 
 type stream struct {
 	url      string
@@ -56,13 +62,10 @@ func (s *stream) handleError(err error, client client.Client, context string) bo
 	if err == nil {
 		return false
 	}
-
 	if s.isBrokenPipeErr(err) {
-		client.Disconnect()
 		return true
 	}
-
-	log.Printf("Error %s: %v", context, err)
+	log.Printf("❌ Error %s: %v", context, err)
 	return true
 }
 
@@ -83,16 +86,22 @@ func (s *stream) extractStreamUrl(meta string) string {
 func (s *stream) StreamHandler(w http.ResponseWriter, r *http.Request, client client.Client) {
 	client.Connect()
 
+	defer func() {
+		client.Disconnect()
+	}()
+
 	req, err := http.NewRequest("GET", s.url, nil)
 	if err != nil {
+		log.Printf("❌ Failed to create request: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
+
 	req.Header.Set("Icy-MetaData", "1")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		log.Printf("❌ Cannot connect to upstream %s: %v", s.url, err)
 		http.Error(w, "Cannot access Icecast stream", http.StatusBadGateway)
-		log.Println("Error connecting to upstream:", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -100,7 +109,7 @@ func (s *stream) StreamHandler(w http.ResponseWriter, r *http.Request, client cl
 	metaintStr := resp.Header.Get("Icy-Metaint")
 	metaint, err := strconv.Atoi(metaintStr)
 	if err != nil || metaint == 0 {
-		log.Println("Upstream doesn't send metadata, doing simple proxy")
+		log.Println("ℹ️  Upstream doesn't send metadata, doing simple proxy")
 		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 		w.WriteHeader(http.StatusOK)
 		_, err := io.Copy(w, resp.Body)
@@ -115,9 +124,14 @@ func (s *stream) StreamHandler(w http.ResponseWriter, r *http.Request, client cl
 
 	bufAudio := make([]byte, metaint)
 	for {
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+
 		_, err := io.ReadFull(resp.Body, bufAudio)
 		if err != nil {
 			if err == io.EOF {
+				log.Println("📡 Upstream stream ended")
 				return
 			}
 			if s.handleError(err, client, "reading audio from upstream") {
@@ -134,6 +148,7 @@ func (s *stream) StreamHandler(w http.ResponseWriter, r *http.Request, client cl
 		_, err = io.ReadFull(resp.Body, lenByte)
 		if err != nil {
 			if err == io.EOF {
+				log.Println("📡 Upstream metadata stream ended")
 				return
 			}
 			if s.handleError(err, client, "reading metadata length from upstream") {
@@ -150,6 +165,7 @@ func (s *stream) StreamHandler(w http.ResponseWriter, r *http.Request, client cl
 		_, err = io.ReadFull(resp.Body, metaBuf)
 		if err != nil {
 			if err == io.EOF {
+				log.Println("📡 Upstream metadata ended")
 				return
 			}
 			if s.handleError(err, client, "reading metadata from upstream") {
@@ -157,20 +173,21 @@ func (s *stream) StreamHandler(w http.ResponseWriter, r *http.Request, client cl
 			}
 		}
 
+		metaStr := string(metaBuf)
+		streamTitle := s.extractStreamTitle(metaStr)
+		streamUrl := s.extractStreamUrl(metaStr)
+
 		if s.showMeta {
-			metaStr := string(metaBuf)
-			streamTitle := s.extractStreamTitle(metaStr)
-			streamUrl := s.extractStreamUrl(metaStr)
+			logMetadata := ""
 
 			if streamTitle != "" {
-				log.Println("🎵 ", streamTitle)
+				logMetadata += fmt.Sprintf("🎵 %s", streamTitle)
 			}
 			if streamUrl != "" {
-				log.Println("🔗 ", streamUrl)
+				logMetadata += fmt.Sprintf(" <=> 🔗 %s", streamUrl)
 			}
 
-			// Optional: log raw metadata for debugging
-			// log.Printf("Raw metadata: %q", metaStr)
+			log.Printf("metadata: %q", logMetadata)
 		}
 
 		_, err = w.Write(metaBuf)
