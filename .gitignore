@@ -1,3 +1,7 @@
+# idea's
+.idea
+.vscode
+
 # env
 .env*
 !.env.example
