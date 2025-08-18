@@ -1,0 +1,7 @@
+services:
+  mw-proxy-stream:
+    container_name: proxy-stream
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: "${UID:-1000}:${GID:-1000}"

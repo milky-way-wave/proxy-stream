@@ -21,12 +21,10 @@ func (c *Client) Connect() {
 	now := time.Now()
 	c.connectedAt = &now
 	log.Printf("client:🟩 %s", c.indentificator)
-
 }
 
 func (c *Client) Disconnect() {
 	duration := c.duration()
-
 	log.Printf("client:🟥 %s %s", c.indentificator, duration)
 }
 
